@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Study Timer — Purple Pro (Stable & Feature-Rich)</title>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ====== THEME & LAYOUT ====== */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+  :root{
+    --bg-a:#0f0716; --bg-b:#2b0b3a;
+    --glass: rgba(255,255,255,0.03);
+    --card: rgba(255,255,255,0.02);
+    --muted:#cfcfe6;
+    --accent1:#8b5cf6; --accent2:#7c3aed; --accent3:#b794f4;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;background:
+    radial-gradient(800px 300px at 10% 10%, rgba(139,92,246,0.06), transparent 6%),
+    linear-gradient(180deg,var(--bg-a),var(--bg-b)); color:#fff; -webkit-font-smoothing:antialiased;}
+  a{color:inherit}
+
+  /* app grid */
+  .app {
+    max-width:1200px;margin:20px auto;padding:18px;display:grid;grid-template-columns:300px 1fr;gap:18px;
+  }
+  .sidebar{background:var(--card);padding:16px;border-radius:var(--radius);height:calc(100vh - 40px);overflow:auto;box-shadow:0 12px 40px rgba(10,6,20,0.6)}
+  .main{background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);padding:16px;border-radius:var(--radius);min-height:calc(100vh - 40px);box-shadow:0 12px 40px rgba(10,6,20,0.6)}
+
+  /* header */
+  .brand{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+  .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:20px}
+  .brand h1{margin:0;font-size:18px}
+  .muted{color:var(--muted);font-size:13px}
+
+  /* inputs */
+  .input{background:var(--glass);border:none;padding:10px;border-radius:10px;color:#fff;width:100%}
+  .row{display:flex;gap:8px}
+  .btn{background:linear-gradient(90deg,var(--accent1),var(--accent2));border:none;padding:10px 12px;border-radius:10px;color:#fff;font-weight:600;cursor:pointer}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+  .small{padding:8px 10px;font-size:13px}
+
+  /* subject list */
+  .subject-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .subject-card{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+  .pill{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+  /* main topbar */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .stats{display:flex;gap:12px}
+  .stat{background:var(--card);padding:8px 12px;border-radius:10px;text-align:center;min-width:120px}
+
+  /* content grid */
+  .content{display:grid;grid-template-columns:1fr 420px;gap:14px}
+  .card{background:var(--card);padding:12px;border-radius:12px}
+  .controls{display:flex;flex-direction:column;gap:12px}
+  .control-item{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+  .timer-display{font-weight:800;font-size:20px;color:transparent;background:linear-gradient(90deg,#fff,#d8cff8);-webkit-background-clip:text}
+
+  /* progress rows */
+  .progress-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+  .p-row{display:flex;align-items:center;gap:12px}
+  .p-name{flex:1}
+  .progress-bg{background:rgba(255,255,255,0.03);height:10px;border-radius:999px;overflow:hidden}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent3),var(--accent1));width:0%;transition:width .5s ease}
+
+  /* right column charts */
+  .chart-box{height:320px}
+  canvas{width:100% !important;height:100% !important}
+
+  /* calendar */
+  .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}
+  .day{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;text-align:center;cursor:pointer}
+  .day .d{font-weight:700}
+  .day .h{font-size:12px;color:var(--muted);margin-top:6px}
+
+  /* responsive */
+  @media (max-width:1060px){ .app{grid-template-columns:1fr} .content{grid-template-columns:1fr} .sidebar{height:auto} }
+  @media (max-width:520px){
+    .brand h1{font-size:16px}
+    .pill{width:40px;height:40px}
+    .timer-display{font-size:16px}
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" aria-label="Sidebar">
+    <div class="brand">
+      <div class="logo">ST</div>
+      <div>
+        <h1>StudyTracker Pro</h1>
+        <div class="muted">Purple • Stable • Responsive</div>
+      </div>
+    </div>
+
+    <!-- Add subject -->
+    <div>
+      <input id="subjectName" class="input" placeholder="Subject name (Math)">
+      <div style="height:8px"></div>
+      <div class="row">
+        <input id="subjectTarget" class="input" placeholder="Target hrs (e.g., 2)" type="number" step="0.5">
+        <button class="btn" onclick="addSubject()">Add</button>
+      </div>
+      <div style="height:10px"></div>
+      <div class="row">
+        <button class="btn ghost small" onclick="exportJSON()">Export JSON</button>
+        <button class="btn ghost small" onclick="importJSON()">Import</button>
+      </div>
+    </div>
+
+    <div style="margin-top:14px" class="muted">Subjects</div>
+    <div id="subjectList" class="subject-list" aria-live="polite"></div>
+
+    <div style="margin-top:16px" class="muted">Pomodoro</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="pomodoroToggle" type="checkbox" /> <label for="pomodoroToggle" class="muted">Enable 25/5</label>
+    </div>
+
+    <div style="margin-top:16px" class="muted">Streak rule</div>
+    <div style="font-size:13px;margin-top:6px">A day counts when total ≥ <input id="streakThreshold" type="number" value="1" min="0.5" step="0.5" style="width:56px;background:var(--glass);border-radius:8px;padding:6px;border:none;color:#fff"> hours</div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main" aria-label="Main area">
+    <div class="topbar">
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="search" class="input" placeholder="Filter subjects..." oninput="renderAll()">
+      </div>
+      <div class="stats">
+        <div class="stat"><small>Total Today</small><div id="statTotal">0.00h</div></div>
+        <div class="stat"><small>Goal Progress</small><div id="statGoal">0%</div></div>
+        <div class="stat"><small>Streak</small><div id="statStreak">0d</div></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- LEFT -->
+      <section>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong>Live Timers</strong><div class="muted" style="font-size:12px">Start/Stop per subject</div></div>
+            <div class="muted" style="font-size:12px">Saved locally</div>
+          </div>
+
+          <div id="controls" class="controls" style="margin-top:12px"></div>
+
+          <div style="margin-top:14px">
+            <h4 style="margin:0 0 8px 0">Progress</h4>
+            <div id="progressList" class="progress-list"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong>History Export</strong>
+            <div>
+              <button class="btn ghost small" onclick="exportCSV()">Export CSV (7-day)</button>
+            </div>
+          </div>
+          <div class="muted" style="margin-top:8px">Click a calendar day to view details.</div>
+        </div>
+      </section>
+
+      <!-- RIGHT -->
+      <aside>
+        <div class="card chart-box">
+          <strong>Today's Breakdown</strong>
+          <canvas id="todayChart"></canvas>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <strong>Last 7 Days</strong>
+          <canvas id="weekChart" style="height:120px;margin-top:8px"></canvas>
+          <div id="calendar" class="calendar" style="margin-top:10px"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<!-- tiny inlined script -->
+<script>
+/* =========================
+   Stable Study Timer App
+   - optimized single tick loop
+   - chart updates (no destroying)
+   - weekly history, streaks, pomodoro
+   ========================= */
+
+const LS_KEY = 'study_timer_pro_v3';
+const palette = ['#8b5cf6','#7c3aed','#b794f4','#d6bcfa','#c084fc','#6ee7b7','#ffd166','#ff7ab6'];
+
+let state = loadState();
+let timers = {}; // {subjectId: {start, running, elapsed}}
+let tickHandle = null;
+let updateScheduled = false;
+let todayDate = () => new Date().toISOString().split('T')[0];
+let today = todayDate();
+let todayChart = null, weekChart = null;
+
+// ---------- state load/save ----------
+function loadState(){
+  const raw = localStorage.getItem(LS_KEY);
+  if (!raw) {
+    const base = {subjects:[], records:{}}; localStorage.setItem(LS_KEY, JSON.stringify(base)); return base;
+  }
+  return JSON.parse(raw);
+}
+function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+// ---------- utilities ----------
+function uid(p='id'){ return p + '_' + Math.random().toString(36).slice(2,9); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function msToHms(ms){ const s=Math.floor(ms/1000), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; }
+function round2(n){ return Math.round(n*100)/100; }
+
+// ---------- subject CRUD ----------
+function addSubject(){
+  const name = document.getElementById('subjectName').value.trim();
+  const t = parseFloat(document.getElementById('subjectTarget').value);
+  if (!name || isNaN(t) || t <= 0) { alert('Enter valid name and target'); return; }
+  const id = uid('s'); const color = palette[state.subjects.length % palette.length];
+  state.subjects.push({id,name,target:parseFloat(t),color}); saveState(); document.getElementById('subjectName').value=''; document.getElementById('subjectTarget').value=''; scheduleRender();
+}
+function editSubject(id){
+  const s = state.subjects.find(x=>x.id===id);
+  const name = prompt('Edit name', s.name); if (!name) return;
+  const target = parseFloat(prompt('Edit target (hrs)', s.target)); if (isNaN(target)||target<=0) return;
+  s.name = name; s.target = target; saveState(); scheduleRender();
+}
+function deleteSubject(id){
+  if (!confirm('Delete subject and all records?')) return;
+  state.subjects = state.subjects.filter(s=>s.id!==id);
+  for (const d in state.records) state.records[d] = state.records[d].filter(r=>r.subjectId!==id);
+  saveState(); scheduleRender();
+}
+
+// ---------- records ----------
+function addRecord(subjectId, hours){
+  const d = todayDate();
+  if (!state.records[d]) state.records[d] = [];
+  let rec = state.records[d].find(r=>r.subjectId===subjectId);
+  if (rec) rec.hours += hours;
+  else state.records[d].push({subjectId, hours});
+  // clamp to target
+  const subj = state.subjects.find(s=>s.id===subjectId);
+  const total = getHours(subjectId,d);
+  if (subj && total > subj.target){
+    const overflow = total - subj.target;
+    const r = state.records[d].find(r=>r.subjectId===subjectId);
+    r.hours = Math.max(0, r.hours - overflow);
+  }
+  saveState();
+}
+
+// get hours
+function getHours(subjectId, date = todayDate()){
+  const arr = state.records[date] || []; const r = arr.find(x=>x.subjectId===subjectId); return r ? round2(r.hours) : 0;
+}
+function getTotalForDate(date = todayDate()){
+  const arr = state.records[date] || []; return round2(arr.reduce((s,r)=>s + (r.hours||0),0));
+}
+function lastNDates(n=7){ const out=[]; for(let i=n-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); out.push(d.toISOString().split('T')[0]); } return out; }
+
+// ---------- timers ----------
+function startTimer(subjectId){
+  // support multiple timers; Pomodoro auto-stop support below
+  if (!timers[subjectId]) timers[subjectId] = {start:Date.now(), running:true, elapsed:0, pomStart:null};
+  else if (!timers[subjectId].running){ timers[subjectId].start = Date.now() - (timers[subjectId].elapsed || 0); timers[subjectId].running = true; }
+  ensureTick();
+  scheduleRender();
+}
+function stopTimer(subjectId){
+  const t = timers[subjectId]; if (!t || !t.running) return;
+  t.elapsed = Date.now() - t.start; t.running = false;
+  // commit hours
+  const hours = (t.elapsed/1000)/3600;
+  addRecord(subjectId, hours);
+  // reset elapsed
+  delete timers[subjectId];
+  scheduleRender();
+  beep();
+}
+function resetTimer(subjectId){
+  delete timers[subjectId]; scheduleRender();
+}
+
+// central tick
+function ensureTick(){
+  if (tickHandle) return;
+  tickHandle = setInterval(()=> {
+    // update live timer displays
+    for (const sid in timers){
+      const t = timers[sid];
+      if (!t.running) continue;
+      const el = document.getElementById('live-'+sid);
+      if (el) el.innerText = msToHms(Date.now() - t.start);
+      // Pomodoro auto-stop
+      if (document.getElementById('pomodoroToggle').checked){
+        // track pomodoro: 25min session
+        const elapsedMs = Date.now() - t.start;
+        if (!t.pomStart) t.pomStart = t.start;
+        if (elapsedMs >= 25*60*1000){ // stop at 25min
+          stopTimer(sid);
+          // simple break notification (no persistent cycles)
+          alert('Pomodoro finished for ' + (getSubjectById(sid)?.name || 'subject') + '. Take a 5 min break!');
+        }
+      }
+    }
+    // schedule a small UI update debounce
+    if (!updateScheduled){ updateScheduled = true; setTimeout(()=>{ updateScheduled=false; renderProgress(); updateCharts(); renderStats(); }, 500); }
+  }, 700);
+}
+
+// ---------- charts (create once, update) ----------
+function createOrUpdateTodayChart(){
+  const ctx = document.getElementById('todayChart').getContext('2d');
+  const labels = state.subjects.map(s=>s.name);
+  const data = state.subjects.map(s=> getHours(s.id));
+  const bg = state.subjects.map(s=> s.color || palette[0]);
+  if (!todayChart){
+    todayChart = new Chart(ctx, { type:'doughnut', data:{labels,datasets:[{data,backgroundColor:bg}]}, options:{plugins:{legend:{position:'bottom'}},maintainAspectRatio:false} });
+  } else {
+    todayChart.data.labels = labels; todayChart.data.datasets[0].data = data; todayChart.data.datasets[0].backgroundColor = bg; todayChart.update('quiet');
+  }
+}
+function createOrUpdateWeekChart(){
+  const ctx = document.getElementById('weekChart').getContext('2d');
+  const days = lastNDates(7);
+  const totals = days.map(d => round2((state.records[d]||[]).reduce((s,r)=>s+(r.hours||0),0)));
+  if (!weekChart){
+    weekChart = new Chart(ctx, { type:'bar', data:{ labels: days.map(d=>d.slice(5)), datasets:[{label:'Hours',data:totals,backgroundColor:palette[2]}]}, options:{scales:{y:{beginAtZero:true}},maintainAspectRatio:false} });
+  } else {
+    weekChart.data.labels = days.map(d=>d.slice(5)); weekChart.data.datasets[0].data = totals; weekChart.update('quiet');
+  }
+}
+function updateCharts(){ createOrUpdateTodayChart(); createOrUpdateWeekChart(); renderCalendar(); }
+
+// ---------- render UI ----------
+function renderAll(){
+  renderSubjectList(); renderControls(); renderProgress(); updateCharts(); renderStats();
+}
+function scheduleRender(){ if (!updateScheduled){ updateScheduled = true; setTimeout(()=>{ updateScheduled=false; renderAll(); }, 120); } }
+
+// sidebar subject list
+function renderSubjectList(){
+  const el = document.getElementById('subjectList'); el.innerHTML = '';
+  const q = (document.getElementById('search')?.value || '').toLowerCase();
+  state.subjects.forEach(s=>{
+    if (q && !s.name.toLowerCase().includes(q)) return;
+    const div = document.createElement('div'); div.className='subject-card';
+    div.innerHTML = `<div class="pill" style="background:${s.color};">${s.name[0].toUpperCase()}</div>
+      <div style="flex:1">
+        <strong>${s.name}</strong>
+        <div class="muted" style="font-size:12px">${getHours(s.id)} / ${s.target} hrs today</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn small" onclick="event.stopPropagation(); editSubject('${s.id}')">Edit</button>
+        <button class="btn ghost small" onclick="event.stopPropagation(); deleteSubject('${s.id}')">Delete</button>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+// controls (timers)
+function renderControls(){
+  const area = document.getElementById('controls'); area.innerHTML = '';
+  if (state.subjects.length === 0){ area.innerHTML = '<div class="muted">No subjects — add one to start</div>'; return; }
+  state.subjects.forEach(s=>{
+    const liveText = timers[s.id] && timers[s.id].running ? msToHms(Date.now() - timers[s.id].start) : '00:00:00';
+    const div = document.createElement('div'); div.className='control-item';
+    div.innerHTML = `<div style="display:flex;gap:12px;align-items:center">
+        <div style="width:56px;height:56px;border-radius:10px;background:${s.color};display:flex;align-items:center;justify-content:center;font-weight:700">${s.name[0].toUpperCase()}</div>
+        <div style="min-width:140px">
+          <strong>${s.name}</strong>
+          <div class="muted" style="font-size:12px">Target: ${s.target}h</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div id="live-${s.id}" class="timer-display">${liveText}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" onclick="startTimer('${s.id}')">Start</button>
+          <button class="btn ghost" onclick="stopTimer('${s.id}')">Stop</button>
+          <button class="btn ghost" onclick="resetTimer('${s.id}')">Reset</button>
+        </div>
+      </div>`;
+    area.appendChild(div);
+  });
+}
+
+// progress list
+function renderProgress(){
+  const el = document.getElementById('progressList'); el.innerHTML = '';
+  state.subjects.forEach(s=>{
+    const studied = getHours(s.id);
+    const pct = s.target ? clamp((studied / s.target) * 100, 0, 100) : 0;
+    const row = document.createElement('div'); row.className='p-row';
+    row.innerHTML = `<div class="p-name"><strong>${s.name}</strong><div class="muted" style="font-size:12px">${studied.toFixed(2)} / ${s.target} hrs</div></div>
+      <div style="width:45%"><div class="progress-bg"><div id="fill-${s.id}" class="progress-fill" style="width:${pct}%"></div></div></div>`;
+    el.appendChild(row);
+  });
+}
+
+// calendar & week
+function renderCalendar(){
+  const cal = document.getElementById('calendar'); cal.innerHTML = '';
+  const days = lastNDates(7);
+  days.forEach(d=>{
+    const total = getTotalForDate(d);
+    const div = document.createElement('div'); div.className='day';
+    div.innerHTML = `<div class="d">${d.slice(5)}</div><div class="h">${total} h</div>`;
+    div.onclick = ()=> showDayDetails(d);
+    cal.appendChild(div);
+  });
+}
+
+// stats & streak
+function renderStats(){
+  const tot = getTotalForDate(todayDate());
+  document.getElementById('statTotal').innerText = tot.toFixed(2) + 'h';
+  const sumTargets = state.subjects.reduce((a,b)=>a + (b.target||0),0);
+  const prog = sumTargets ? Math.round((tot / sumTargets) * 100) : 0;
+  document.getElementById('statGoal').innerText = prog + '%';
+  // streak calculation
+  const thresh = parseFloat(document.getElementById('streakThreshold').value) || 1;
+  let streak = 0;
+  const days = lastNDates(30).reverse(); // from recent to older
+  for (const d of days){
+    const val = getTotalForDate(d);
+    if (val >= thresh) streak++; else break;
+  }
+  document.getElementById('statStreak').innerText = streak + 'd';
+}
+
+// day details modal (simple)
+function showDayDetails(date){
+  const recs = state.records[date] || [];
+  if (!recs.length) return alert(date + '\\nNo study recorded');
+  let lines = [`Details for ${date}:`];
+  recs.forEach(r=>{ const s = getSubjectById(r.subjectId); lines.push(`${s? s.name : 'Unknown'} — ${r.hours.toFixed(2)}h`); });
+  alert(lines.join('\\n'));
+}
+
+// helper
+function getSubjectById(id){ return state.subjects.find(s=>s.id===id); }
+
+// ---------- CSV / Import / Export ----------
+function exportCSV(){
+  const days = lastNDates(7);
+  let rows = [['date', ...state.subjects.map(s=>s.name), 'total']];
+  days.forEach(d=>{
+    const row = [d];
+    let total = 0;
+    state.subjects.forEach(s=>{
+      const h = state.records[d] ? (state.records[d].find(r=>r.subjectId===s.id)?.hours || 0) : 0;
+      row.push(h.toFixed(2)); total += h;
+    });
+    row.push(total.toFixed(2));
+    rows.push(row);
+  });
+  const csv = rows.map(r=> r.map(c=> `"${c}"`).join(',')).join('\\n');
+  const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'study_7days.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'study_state.json'; a.click(); URL.revokeObjectURL(url);
+}
+
+function importJSON(){
+  const input = document.createElement('input'); input.type='file'; input.accept='application/json';
+  input.onchange = (e)=> {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader(); reader.onload = evt => {
+      try { const obj = JSON.parse(evt.target.result); state = obj; saveState(); scheduleRender(); alert('Imported'); } catch(e){ alert('Invalid JSON'); }
+    }; reader.readAsText(file);
+  }; input.click();
+}
+
+// ---------- beep ----------
+function beep(){ try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(), g=ctx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.value=0.05; o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>{ o.stop(); ctx.close(); }, 150); }catch(e){} }
+
+// ---------- initialization: sample subjects if empty ----------
+if (!state.subjects || state.subjects.length === 0){
+  state.subjects = [
+    {id:uid('s'), name:'Math', target:2, color:palette[0]},
+    {id:uid('s'), name:'Physics', target:1.5, color:palette[1]},
+    {id:uid('s'), name:'CSE', target:2, color:palette[2]}
+  ];
+  saveState();
+}
+
+// ---------- initial render and chart creation ----------
+function updateCharts(){ createOrUpdateTodayChart(); createOrUpdateWeekChart(); }
+function createOrUpdateTodayChart(){
+  const ctx = document.getElementById('todayChart').getContext('2d');
+  const labels = state.subjects.map(s=>s.name);
+  const data = state.subjects.map(s=> getHours(s.id));
+  const bg = state.subjects.map(s=> s.color || palette[0]);
+  if (!todayChart){
+    todayChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{data,backgroundColor:bg}] }, options:{plugins:{legend:{position:'bottom'}},maintainAspectRatio:false} });
+  } else {
+    todayChart.data.labels = labels; todayChart.data.datasets[0].data = data; todayChart.data.datasets[0].backgroundColor = bg; todayChart.update('quiet');
+  }
+}
+function createOrUpdateWeekChart(){
+  const ctx = document.getElementById('weekChart').getContext('2d');
+  const days = lastNDates(7);
+  const totals = days.map(d => round2((state.records[d]||[]).reduce((s,r)=>s + (r.hours||0),0)));
+  if (!weekChart){
+    weekChart = new Chart(ctx, { type:'bar', data:{ labels: days.map(d=>d.slice(5)), datasets:[{label:'Hours', data:totals, backgroundColor:palette[2]}]}, options:{scales:{y:{beginAtZero:true}},maintainAspectRatio:false} });
+  } else {
+    weekChart.data.labels = days.map(d=>d.slice(5)); weekChart.data.datasets[0].data = totals; weekChart.update('quiet');
+  }
+}
+
+// ---------- start ticking & initial UI render ----------
+ensureTick(); renderAll();
+
+// small periodic sync: every 10s persist state if changed (cheap)
+setInterval(()=>{ saveState(); }, 10000);
+
+</script>
+</body>
+</html>
